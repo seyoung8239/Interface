@@ -1,7 +1,7 @@
 import React, { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
 import Input from '@components/Input/Input';
 import { lowerBoundFB } from '../../utils/utils';
-import { FeedbackType } from '@types/common';
+import { FeedbackType } from '@myTypes/common';
 
 const initialTimeline = [
 	{ id: '1', startTime: 1, endTime: 2, content: 'hello' },
@@ -77,7 +77,7 @@ function Timeline({ currentTime, setCurrentTime, setIsFbClicked }: PropType) {
 					<div>{content}</div>
 				</div>
 			))}
-			<Input setFeedbackBoxes={setFeedbackBoxes}></Input>
+			<Input setFeedbackBoxes={setFeedbackBoxes} currentTime={currentTime}></Input>
 		</div>
 	);
 }

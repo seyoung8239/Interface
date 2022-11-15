@@ -1,4 +1,4 @@
-import { FeedbackType } from '@types/common';
+import { FeedbackType } from '@myTypes/common';
 
 export const lowerBoundFB = (list: Array<FeedbackType>, key: number) => {
 	let mid;
