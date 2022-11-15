@@ -77,6 +77,7 @@ function Timeline({ currentTime, setCurrentTime, setIsFbClicked }: PropType) {
 					<div>{content}</div>
 				</div>
 			))}
+			<Input setFeedbackBoxes={setFeedbackBoxes}></Input>
 		</div>
 	);
 }

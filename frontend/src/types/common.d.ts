@@ -5,3 +5,10 @@ declare module '*.svg' {
 	const src: string;
 	export default src;
 }
+
+export interface FeedbackType {
+	id: string;
+	startTime: number;
+	endTime: number;
+	content: string;
+}
