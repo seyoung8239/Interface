@@ -109,32 +109,40 @@ const useWebRTCSignaling = (
 	const startConnection = async (myId) => {
 		await getMyStream(myId);
 
-		socket.on('receive_signaling', async (opponentId) => {
+		socket.on('receive_signaling', async ({ userUUID: opponentId }) => {
+			console.log('시그널 받음', '상대방', opponentId, '나', myId);
 			const newConnection = makeConnection(myId, opponentId);
 			const offer = await newConnection.createOffer();
 			newConnection.setLocalDescription(offer);
 
+			console.log('offer 보냄', offer, opponentId);
+
 			socket.emit('offer', { offer, myId, opponentId });
 		});
 
-		socket.on('offer', async ({ offer, opponentId }) => {
+		socket.on('offer', async ({ offer, myId, opponentId }) => {
+			console.log('offer 받음', offer);
 			const newConnection = makeConnection(myId, opponentId);
 			newConnection.setRemoteDescription(offer);
 			const answer = await newConnection.createAnswer();
 			newConnection.setLocalDescription(answer);
 
+			console.log('answer 보냄');
+
 			socket.emit('answer', { answer, myId, opponentId });
 		});
 
 		socket.on('answer', ({ answer, opponentId }) => {
+			// console.log(answer, opponentId);
+			console.log('answer 받음');
 			connectionListRef.current.get(opponentId).connection.setRemoteDescription(answer);
 		});
 
 		socket.on('icecandidate', ({ icecandidate, opponentId }) => {
+			// console.log(icecandidate, opponentId);
+			console.log('ice 받음');
 			connectionListRef.current.get(opponentId).connection.addIceCandidate(icecandidate);
 		});
-
-		socket.on('disconnect_webrtc', closeConnection);
 
 		socket.emit('start_signaling', myId);
 	};
@@ -145,13 +153,11 @@ const useWebRTCSignaling = (
 	 * 그 후, connectionListRef과 외부 webRTCUserList를 업데이트합니다.
 	 * @param closeId 서버가 보낸 나간 UserId
 	 */
-	const closeConnection = (closeId) => {
+	const closeConnection = ({ userUUID: closeId }) => {
 		const oldStream = webRTCUserList.get(closeId).stream;
 		const oldConnection = webRTCUserList.get(closeId).connection;
-
 		oldStream.getTracks().forEach((track) => track.stop());
 		oldConnection.close();
-
 		connectionListRef.current?.delete(closeId);
 		const newUserList = new Map(webRTCUserList);
 		newUserList.delete(closeId);
@@ -164,9 +170,18 @@ const useWebRTCSignaling = (
 			socket.off('offer');
 			socket.off('answer');
 			socket.off('icecandidate');
-			socket.off('disconnect_webrtc');
 		};
 	}, []);
+
+	//TODO 더 좋은 방법 없을까?
+	//closeConnection 내부의 webRTCUserState가 catupe되서 업데이트가 안되는 현상 fix
+	useEffect(() => {
+		socket.on('disconnect_webrtc', closeConnection);
+
+		return () => {
+			socket.off('disconnect_webrtc');
+		};
+	}, [webRTCUserList]);
 
 	return { startConnection, closeConnection };
 };

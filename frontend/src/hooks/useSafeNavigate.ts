@@ -1,16 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import { useSetRecoilState } from 'recoil';
-import { phaseState } from '@store/phase.atom';
-import { PHASE_TYPE } from '@constants/phase.constant';
-import { getPathWithPhase } from '@utils/getPathWithPhase';
+import { pageState } from '@store/page.atom';
+import { PAGE_TYPE } from '@constants/page.constant';
 
 const useSafeNavigate = () => {
-	const navigate = useNavigate();
-	const phaseSetter = useSetRecoilState(phaseState);
-	const safeNavigate = (phase: PHASE_TYPE) => {
-		phaseSetter(phase);
-		navigate(getPathWithPhase(phase));
+	const setPage = useSetRecoilState(pageState);
+	const safeNavigate = (newPage: PAGE_TYPE) => {
+		setPage(newPage);
 	};
+	
 	return { safeNavigate };
 };
 export default useSafeNavigate;

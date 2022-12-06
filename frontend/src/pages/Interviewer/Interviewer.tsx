@@ -1,122 +1,82 @@
-import React, { useEffect } from 'react';
-import { PHASE_TYPE } from '@constants/phase.constant';
+import React, { useEffect, useRef } from 'react';
+import { PAGE_TYPE } from '@constants/page.constant';
 import useSafeNavigate from '@hooks/useSafeNavigate';
 import usePreventLeave from '@hooks/usePreventLeave';
+import { useRecoilValue } from 'recoil';
+import { webRTCStreamSelector } from '@store/webRTC.atom';
+import Video from '@components/@shared/Video/Video';
 import { socket } from '../../service/socket';
+import { userRoleSelector } from '@store/room.atom';
+import IntervieweeVideo from '@components/IntervieweeVideo/IntervieweeVideo';
+import { currentVideoTimeState } from '@store/currentVideoTime.atom';
+import FeedbackArea from '@components/FeedbackArea/FeedbackArea';
+import { css } from '@emotion/react';
 
 const Interviewer = () => {
 	const { safeNavigate } = useSafeNavigate();
 	usePreventLeave();
 
-	const makeNewVideo = (stream) => {
-		const newVideo = document.createElement('video');
+	const currentVideoTime = useRecoilValue(currentVideoTimeState);
 
-		newVideo.srcObject = stream;
-		newVideo.width = 400;
-		newVideo.autoplay = true;
-		newVideo.playsInline = true;
-		document.body.appendChild(newVideo);
-	};
+	const { interviewee, interviewerList } = useRecoilValue(userRoleSelector);
+	const streamList = useRecoilValue(webRTCStreamSelector);
 
-	let stream;
-	const connectionList = new Map();
-
-	const handleIce = (senderId, recieverID, data) => {
-		socket.emit('ice', data.candidate, senderId, recieverID);
-	};
-
-	const handleAddStream = async (receiverId, data) => {
-		makeNewVideo(data.stream);
-		connectionList.set(receiverId, { ...connectionList.get(receiverId), stream: data.stream });
-	};
-
-	async function getMedia() {
-		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				audio: true,
-				video: true,
-			});
-
-			makeNewVideo(stream);
-		} catch (e) {
-			console.log(e);
-		}
-	}
-
-	const makeConnection = (senderID, recieverID) => {
-		const connection = new RTCPeerConnection({
-			iceServers: [
-				{
-					urls: [
-						'stun:stun.l.google.com:19302',
-						'stun:stun1.l.google.com:19302',
-						'stun:stun2.l.google.com:19302',
-						'stun:stun3.l.google.com:19302',
-						'stun:stun4.l.google.com:19302',
-					],
-				},
-			],
+	const hadleEndInterview = () => {
+		socket.emit('end_interview', (res) => {
+			console.log(res);
 		});
-
-		connection.addEventListener('icecandidate', (data) =>
-			handleIce(senderID, recieverID, data)
-		);
-		connection.addEventListener('addstream', (data) => handleAddStream(recieverID, data));
-
-		//내 stream을 가져와 conection에 track을 추가한다.
-		stream.getTracks().forEach((track) => connection.addTrack(track, stream));
-
-		connectionList.set(recieverID, { connection });
 	};
 
-	const enterRoomInit = async (senderId) => {
-		await getMedia();
-
-		socket.emit('join_room', senderId);
+	const getStreamFromUUID = (uuid) => {
+		return streamList.find((stream) => stream.uuid === uuid).stream;
 	};
 
 	useEffect(() => {
-		const senderId = Math.random();
-		console.log('내 닉네임', senderId);
-		enterRoomInit(senderId);
+		console.log(currentVideoTime);
+	}, [currentVideoTime]);
 
-		socket.on('welcome', async (receiverId) => {
-			//알림을 받는 쪽에서 실행
-			console.log('상대방 닉네임', receiverId);
-			makeConnection(senderId, receiverId);
-			const offer = await connectionList.get(receiverId).connection.createOffer(); //초대장 만들기
-			connectionList.get(receiverId).connection.setLocalDescription(offer);
-			socket.emit('offer', offer, senderId, receiverId);
-		});
-
-		//새로운 참가자가 offer를 받으면 answer를 만들어서 기존 참가자들에게 보냄
-		socket.on('offer', async (offer, receiverId) => {
-			makeConnection(senderId, receiverId);
-			connectionList.get(receiverId).connection.setRemoteDescription(offer);
-			const answer = await connectionList.get(receiverId).connection.createAnswer();
-			connectionList.get(receiverId).connection.setLocalDescription(answer);
-			socket.emit('answer', answer, senderId, receiverId);
-		});
-
-		//answer를 받으면 내꺼에 answer를 등록
-		socket.on('answer', (answer, receiverId) => {
-			connectionList.get(receiverId).connection.setRemoteDescription(answer);
-
-			console.log(connectionList);
-		});
-
-		//candicate를 받음.
-		socket.on('ice', (ice, receiverId) => {
-			connectionList.get(receiverId).connection.addIceCandidate(ice);
+	useEffect(() => {
+		console.log(interviewee);
+		socket.on('start_feedback', () => {
+			safeNavigate(PAGE_TYPE.FEEDBACK_PAGE);
 		});
 	}, []);
 
 	return (
-		<>
+		<div css={InterviewerWrapperStyle}>
 			<div>Interviewer</div>
-			<button onClick={() => safeNavigate(PHASE_TYPE.FEEDBACK_PHASE)}>면접 종료</button>
-		</>
+			<div>면접자 : {interviewee.uuid}</div>
+			<IntervieweeVideo
+				key={interviewee.uuid}
+				src={getStreamFromUUID(interviewee.uuid)}
+				width={400}
+				autoplay
+				muted
+			/>
+			{interviewerList.map((interviewer) => (
+				<Video
+					key={interviewer.uuid}
+					src={getStreamFromUUID(interviewer.uuid)}
+					width={200}
+					autoplay
+					muted
+				/>
+			))}
+
+			<FeedbackArea />
+			<button onClick={hadleEndInterview}>면접 종료</button>
+		</div>
 	);
 };
 
 export default Interviewer;
+
+const InterviewerWrapperStyle = (theme) => css`
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 100%;
+	height: 100%;
+	background-color: ${theme.colors.primary3};
+`;

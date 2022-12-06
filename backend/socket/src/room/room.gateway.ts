@@ -1,5 +1,5 @@
-import { ROOM_EVENT } from '@constant';
-import { Logger } from '@nestjs/common';
+import { EVENT } from '@constant';
+import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -9,32 +9,44 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { SocketResponseDto } from 'src/room/dto/socket-response.dto';
-import { RoomService } from './room.service';
+import { Namespace, Socket } from 'socket.io';
+import { SocketExceptionFilter } from 'src/filter/socket-exception.filter';
+import { SocketResponseInterceptor } from 'src/interceptor/socket-response.interceptor';
+import { WebrtcAnswerDto, WebrtcIcecandidateDto, WebrtcOfferDto } from './dto/webrtc.dto';
+import { ConnectionService } from './service/connection/connection.service';
+import { InterviewService } from './service/interview/interview.service';
+import { ObjectStorageService } from './service/objectstorage/objectstorage.service';
+import { WebrtcService } from './service/webRTC/webrtc.service';
 
+@UseInterceptors(new SocketResponseInterceptor())
+@UseFilters(new SocketExceptionFilter())
 @WebSocketGateway({ namespace: 'socket' })
 export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
-	@WebSocketServer() server: Server;
+	@WebSocketServer() server: Namespace;
 	private logger = new Logger('room');
 
-	constructor(private readonly roomSerivce: RoomService) {}
+	constructor(
+		private readonly connectionService: ConnectionService,
+		private readonly interviewService: InterviewService,
+		private readonly webrtcService: WebrtcService,
+		private readonly objectStorageService: ObjectStorageService
+	) {}
 
-	@SubscribeMessage(ROOM_EVENT.CREATE_ROOM)
-	handleCreateRoom(): SocketResponseDto {
-		const uuid = this.roomSerivce.createRoom();
-		return new SocketResponseDto({ success: true, data: { uuid } });
+	// connection
+
+	@SubscribeMessage(EVENT.CREATE_ROOM)
+	handleCreateRoom() {
+		return this.connectionService.createRoom();
 	}
 
-	@SubscribeMessage(ROOM_EVENT.ENTER_ROOM)
+	@SubscribeMessage(EVENT.ENTER_ROOM)
 	handleEnterRoom(@ConnectedSocket() client: Socket, @MessageBody() roomUUID: string) {
-		const users = this.roomSerivce.enterRoom({ client, server: this.server, roomUUID });
-		return new SocketResponseDto({ success: true, data: { users } });
+		return this.connectionService.enterRoom({ client, roomUUID });
 	}
 
-	@SubscribeMessage(ROOM_EVENT.LEAVE_ROOM)
+	@SubscribeMessage(EVENT.LEAVE_ROOM)
 	handleLeaveRoom(@ConnectedSocket() client: Socket) {
-		this.roomSerivce.leaveRoom(client, this.server);
+		return this.connectionService.leaveRoom(client);
 	}
 
 	handleConnection(@ConnectedSocket() client: Socket) {
@@ -43,21 +55,79 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	handleDisconnect(@ConnectedSocket() client: Socket) {
 		this.logger.log(`disconnected: ${client.id}`);
-		this.roomSerivce.leaveRoom(client, this.server);
+		this.objectStorageService.deleteVideoData(client.id);
+		this.webrtcService.disconnectWebrtc(client);
+		this.connectionService.leaveRoom(client);
 	}
 
-	// @SubscribeMessage(ROOM_EVENT.START_INTERVIEW)
-	// handleStartInterview(@ConnectedSocket() client: Socket) {
-	// 	return this.roomSerivce.startInterview(client, this.server);
-	// }
+	// interview
 
-	// @SubscribeMessage(ROOM_EVENT.END_INTERVIEW)
-	// handleEndInterview(@ConnectedSocket() client: Socket) {
-	// 	return this.roomSerivce.endInterview(client, this.server);
-	// }
+	@SubscribeMessage(EVENT.START_INTERVIEW)
+	handleStartInterview(@ConnectedSocket() client: Socket) {
+		return this.interviewService.startInterview(client);
+	}
 
-	// @SubscribeMessage(ROOM_EVENT.END_FEEDBACK)
-	// handleEndFeedback(@ConnectedSocket() client: Socket) {
-	// 	this.roomSerivce.endFeedback(client, this.server);
-	// }
+	@SubscribeMessage(EVENT.END_INTERVIEW)
+	handleEndInterview(@ConnectedSocket() client: Socket) {
+		return this.interviewService.endInterview({ client, server: this.server });
+	}
+
+	@SubscribeMessage(EVENT.END_FEEDBACK)
+	handleEndFeedback(@ConnectedSocket() client: Socket) {
+		return this.interviewService.endFeedback(client);
+	}
+
+	// objectStorage
+
+	@SubscribeMessage(EVENT.ALLOW_BUCKET_CORS)
+	handleAllowBucketCors() {
+		return this.objectStorageService.setCorsAtBucket();
+	}
+
+	@SubscribeMessage(EVENT.STREAM_VIDEO)
+	handleStreamVideo(@ConnectedSocket() client: Socket, @MessageBody() videoBuffer: Buffer) {
+		return this.objectStorageService.mediaStreaming({ client, videoBuffer });
+	}
+
+	@SubscribeMessage(EVENT.FINISH_STEAMING)
+	handleFinishStreaming(@ConnectedSocket() client: Socket, @MessageBody() docsUUID: string) {
+		return this.objectStorageService.uploadVideo({ client, docsUUID });
+	}
+
+	// webRTC
+
+	@SubscribeMessage(EVENT.START_SIGNALING)
+	handleStartSignaling(@ConnectedSocket() client: Socket) {
+		return this.webrtcService.startSignaling(client);
+	}
+
+	@SubscribeMessage(EVENT.OFFER)
+	handleOffer(@ConnectedSocket() client: Socket, @MessageBody() connectSignal: WebrtcOfferDto) {
+		return this.webrtcService.delivery({
+			client,
+			connectSignal,
+			eventType: EVENT.OFFER,
+		});
+	}
+
+	@SubscribeMessage(EVENT.ANSWER)
+	handleAnswer(@ConnectedSocket() client: Socket, @MessageBody() connectSignal: WebrtcAnswerDto) {
+		return this.webrtcService.delivery({
+			client,
+			connectSignal,
+			eventType: EVENT.ANSWER,
+		});
+	}
+
+	@SubscribeMessage(EVENT.ICECANDIDATE)
+	handleIceCandidate(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() connectSignal: WebrtcIcecandidateDto
+	) {
+		return this.webrtcService.delivery({
+			client,
+			connectSignal,
+			eventType: EVENT.ICECANDIDATE,
+		});
+	}
 }
