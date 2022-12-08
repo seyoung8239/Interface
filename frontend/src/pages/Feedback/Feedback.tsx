@@ -1,16 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { useRecoilState, useSetRecoilState } from 'recoil';
-import { socket } from '../../service/socket';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
+import axios from 'axios';
 
 import IntervieweeVideo from '@components/IntervieweeVideo/IntervieweeVideo';
+import FeedbackList from '@components/FeedbackList/FeedbackList';
+import BottomBar from '@components/BottomBar/BottomBar';
+import RoundButton from '@components/@shared/RoundButton/RoundButton';
 import usePreventLeave from '@hooks/usePreventLeave';
-import FeedbackArea from '@components/FeedbackArea/FeedbackArea';
-import { isFbSyncState } from '@store/feedback.atom';
-
-import { feedbackPageStyle, feedbackPageContainerStyle } from './Feddback.style';
 import useSafeNavigate from '@hooks/useSafeNavigate';
+import { feedbackDtoSelector, isFbSyncState } from '@store/feedback.store';
+import { completedFbCntState, docsUUIDState, meInRoomState } from '@store/room.store';
+
+import { ReactComponent as LinkIcon } from '@assets/icon/link.svg';
+import { socket } from '../../service/socket';
+import {
+	feedbackWrapperStyle,
+	feedbackPageContainerStyle,
+	feedbackAreaStyle,
+	feedbackSyncBtnStyle,
+} from './Feedback.style';
 import { PAGE_TYPE } from '@constants/page.constant';
-import { completedFbCntState } from '@store/room.atom';
+import theme from '@styles/theme';
+import { iconBgStyle } from '@styles/commonStyle';
+import { socketEmit } from '@api/socket.api';
+import { SOCKET_EVENT_TYPE } from '@constants/socket.constant';
+import { FeedbackDtoType } from '@customType/dto';
+import FeedbackForm from '@components/FeedbackForm/FeedbackForm';
+import { REST_TYPE } from '@constants/rest.constant';
 
 const Feedback = () => {
 	usePreventLeave();
@@ -18,22 +34,28 @@ const Feedback = () => {
 	const { safeNavigate } = useSafeNavigate();
 	const [isFbSync, setIsFbSync] = useRecoilState(isFbSyncState);
 	const [videoUrl, setVideoUrl] = useState('');
+	const docsUUID = useRecoilValue(docsUUIDState);
+	const feedbackList = useRecoilValue(feedbackDtoSelector);
+	const me = useRecoilValue(meInRoomState);
 
-	const handleEndFeedback = () => {
-		socket.emit('end_feedback', (res) => {
-			console.log(res);
-			const { data } = res;
+	const handleEndFeedback = useCallback(() => {
+		socketEmit(SOCKET_EVENT_TYPE.END_FEEDBACK, ({ data }) => {
 			const { isLastFeedback, count } = data;
 			setCompletedFbCnt(count);
+			const feedbackDto: FeedbackDtoType = {
+				docsUUID,
+				userUUID: me.uuid,
+				feedbackList,
+			};
+			axios.post(REST_TYPE.FEEDBACK, feedbackDto);
+
 			if (isLastFeedback) safeNavigate(PAGE_TYPE.LOBBY_PAGE);
 			else safeNavigate(PAGE_TYPE.WAITTING_PAGE);
 		});
-	};
+	}, [docsUUID, feedbackList]);
 
 	useEffect(() => {
-		socket.on('download_video', ({ videoUrl }) => {
-			console.log('download');
-			console.log(videoUrl);
+		socket.on(SOCKET_EVENT_TYPE.DOWNLOAD_VIDEO, ({ videoUrl }) => {
 			setVideoUrl(videoUrl);
 		});
 	}, []);
@@ -42,20 +64,39 @@ const Feedback = () => {
 		console.log(videoUrl);
 	}, [videoUrl]);
 
+	const finishFeedbackBtn = (
+		<RoundButton
+			style={{
+				backgroundColor: theme.colors.primary,
+				width: 200,
+				height: 50,
+				color: theme.colors.white,
+			}}
+			onClick={handleEndFeedback}
+		>
+			<div>피드백 종료</div>
+		</RoundButton>
+	);
+
 	return (
-		<div css={feedbackPageStyle}>
+		<div css={feedbackWrapperStyle}>
 			<div css={feedbackPageContainerStyle}>
 				<IntervieweeVideo src={videoUrl} width={400} autoplay muted controls />
 				<button
-					type="button"
+					css={(theme) => feedbackSyncBtnStyle(theme, isFbSync)}
 					onClick={() => setIsFbSync((current) => !current)}
-					style={{ color: 'white', height: '40px', width: '65px' }}
 				>
-					{isFbSync ? 'Sync' : 'UnSync'}
+					<LinkIcon
+						{...iconBgStyle}
+						fill={isFbSync ? theme.colors.white : theme.colors.primary}
+					/>
 				</button>
-				<FeedbackArea />
-				<button onClick={handleEndFeedback}>피드백 종료</button>
+				<div css={feedbackAreaStyle}>
+					<FeedbackList editable />
+					<FeedbackForm />
+				</div>
 			</div>
+			<BottomBar mainController={finishFeedbackBtn} />
 		</div>
 	);
 };

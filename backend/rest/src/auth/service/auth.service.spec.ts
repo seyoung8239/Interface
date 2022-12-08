@@ -1,13 +1,12 @@
-import { JoinUserBuilder } from '@builder';
+import { JoinUserBuilder } from '../../user/entities/typeorm-user.builder';
 import { JWT_ENV, USER_REPOSITORY_INTERFACE } from '@constant';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserInfo } from 'src/types/auth.type';
 import { MockRepository } from 'src/types/mock.type';
-import { UserEntity } from 'src/user/entities/interface-user.entity';
-import { TypeormUserEntity } from 'src/user/entities/typeorm-user.entity';
-import { UserRepository } from 'src/user/repository/interface-user.repository';
+import { UserEntity } from 'src/user/entities/user.entity';
+import { UserRepository } from 'src/user/repository/user.repository';
 import { AuthService } from './auth.service';
 import { OauthKakaoService } from './oauth/kakao-oauth.service';
 import { OauthNaverService } from './oauth/naver-oauth.service';
@@ -154,14 +153,12 @@ describe('AuthService', () => {
 	});
 
 	const makeMockUser = (userInfo: UserInfo): UserEntity => {
-		const { id, email, password, nickname, oauthType } = userInfo;
+		const { id, email, password, oauthType } = userInfo;
 		const userEntity = new JoinUserBuilder()
 			.setId(id)
 			.setEmail(email)
 			.setPassword(password)
-			.setNickname(nickname)
 			.setOauthType(oauthType)
-			.setDefaultValue()
 			.build();
 		return userEntity;
 	};
