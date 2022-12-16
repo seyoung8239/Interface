@@ -2,6 +2,7 @@ import {
 	AUTHORIZATION_TOKEN_TYPE,
 	KAKAO_ACCESS_TOKEN_URL,
 	KAKAO_AUTHORIZE_PAGE_URL,
+	KAKAO_CLIENT_ID,
 	KAKAO_PROFILE_API_URL,
 	OAUTH_CALLBACK_URL,
 	OAUTH_TYPE,
@@ -10,11 +11,15 @@ import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { UserSocialInfo } from '@types';
 import { OauthService } from './interface-oauth.service';
+import { ConfigService } from '@nestjs/config';
+import { KAKAO_CLIENT_SECRET } from 'src/constant/env.constant';
 
 @Injectable()
 export class OauthKakaoService implements OauthService {
-	private clientId = process.env.KAKAO_CLIENT_ID;
-	private clientSecret = process.env.KAKAO_CLIENT_SECRET;
+	constructor(private readonly configService: ConfigService) {}
+
+	private clientId = KAKAO_CLIENT_ID;
+	private clientSecret = this.configService.get(KAKAO_CLIENT_SECRET);
 	private callbackUrl = [
 		process.env.CLIENT_ORIGIN_URL,
 		OAUTH_CALLBACK_URL,
@@ -35,7 +40,7 @@ export class OauthKakaoService implements OauthService {
 		const { access_token } = await axios
 			.get(KAKAO_ACCESS_TOKEN_URL + queryString)
 			.then((res) => res.data);
-		console.log(access_token);
+
 		return access_token;
 	}
 
@@ -49,7 +54,7 @@ export class OauthKakaoService implements OauthService {
 		const res = await axios.get(KAKAO_PROFILE_API_URL, { headers }).then((res) => res.data);
 
 		const user = res['kakao_account'] as UserSocialInfo;
-		user.id = res.id;
+		user.id = `${res.id}`;
 		user.oauthType = OAUTH_TYPE.KAKAO;
 		return user;
 	}

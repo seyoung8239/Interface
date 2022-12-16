@@ -1,22 +1,21 @@
 import React from 'react';
 import { roundButtonStyle } from './RoundButton.style';
 
-export interface Prop {
+export interface roundButtonPropType {
 	children?: React.ReactNode | React.ReactNode[];
 	onClick?: React.MouseEventHandler<HTMLButtonElement>;
 	style: StyleType;
 }
 
-interface StyleType {
+export interface StyleType {
+	theme?: any;
 	width?: number;
-	height?: number;
-	backgroundColor?: string;
-	color?: string;
-	iconColor?: boolean;
+	size?: 'small' | 'medium' | 'large';
+	color?: 'primary' | 'secondary' | 'red' | 'black';
+	style?: 'contained' | 'text';
 }
 
-const RoundButton = (prop: Prop) => {
-	const { children, onClick, style } = prop;
+const RoundButton = ({ children, onClick, style }: roundButtonPropType) => {
 	return (
 		<button css={(theme) => roundButtonStyle({ ...style, theme })} onClick={onClick}>
 			{children}

@@ -9,7 +9,11 @@ export const TextFieldWrapperStyle = (width) => css`
 
 export const TextFieldStyle = (theme, error, disabled, textAlign) => css`
 	width: 100%;
-	background-color: ${disabled ? theme.colors.gray3 : theme.colors.secondary};
+	background-color: ${error
+		? theme.colors.red + '22'
+		: disabled
+		? theme.colors.gray3
+		: theme.colors.secondary};
 	color: ${error ? theme.colors.red : disabled ? theme.colors.gray2 : theme.colors.black};
 	padding: 12px;
 
@@ -17,7 +21,7 @@ export const TextFieldStyle = (theme, error, disabled, textAlign) => css`
 	font-size: ${theme.fontSize.small};
 
 	border: 1px solid ${!disabled && error ? theme.colors.red : theme.colors.gray2};
-	border-radius: ${theme.borderRaduis};
+	border-radius: ${theme.borderRadius};
 
 	&::placeholder {
 		color: ${theme.colors.gray2};

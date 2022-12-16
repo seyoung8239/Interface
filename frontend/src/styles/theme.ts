@@ -1,7 +1,7 @@
 const theme = {
 	colors: {
-		red: '#f45452',
-		primary: '#0182C7',
+		red: '#F45452',
+		primary: '#0090DD',
 		secondary: '#DCEEFF',
 		tertiary: '#222B5C',
 		black: '#222222',
@@ -15,8 +15,10 @@ const theme = {
 		small: '16px',
 		medium: '20px',
 		large: '24px',
+		xLarge: '28px',
 	},
-	borderRaduis: '8px',
+	borderRadius: '8px',
+	bottomBarHeight: '64px',
 };
 
 export default theme;

@@ -6,28 +6,13 @@ export const lobbyWrapperStyle = (theme) => css`
 	background-color: ${theme.colors.tertiary};
 `;
 
-export const startInterviewBtnStyle = (theme) => css`
-	box-sizing: border-box;
-	background-color: ${theme.colors.primary};
-	width: 200px;
-	height: 50px;
-	border-radius: 36px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 0px 30px;
-
-	div {
-		color: white;
-		font-size: 24px;
-	}
-`;
-
-export const VideoAreaStyle = () => css`
+export const lobbyVideoAreaStyle = () => css`
 	display: flex;
 	justify-content: center;
 	align-content: center;
 
+	padding: 24px;
+
 	width: 100%;
-	height: calc(100% - 72px);
+	height: calc(100% - 64px);
 `;

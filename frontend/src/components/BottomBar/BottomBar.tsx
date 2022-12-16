@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 import ChatDrawer from '@components/@drawer/ChatDrawer/ChatDrawer';
 import UserDrawer from '@components/@drawer/UserDrawer/UserDrawer';
-import RecordDrawer from '@components/@drawer/RecordDrawer/RecordDrawer';
 
 import { ReactComponent as UserIcon } from '@assets/icon/user.svg';
 import { ReactComponent as MicOnIcon } from '@assets/icon/mic_on.svg';
@@ -24,12 +23,15 @@ import {
 	drawerStyle,
 	drawerHeaderStyle,
 } from './BottomBar.style';
-import theme from '@styles/theme';
-import { iconBgStyle } from '@styles/commonStyle';
-import { socketEmit } from '@api/socket.api';
-import { SOCKET_EVENT_TYPE } from '@constants/socket.constant';
-import useSafeNavigate from '@hooks/useSafeNavigate';
 import { PAGE_TYPE } from '@constants/page.constant';
+import useModal from '@hooks/useModal';
+import { useRecoilState, useRecoilValue } from 'recoil';
+import { pageState } from '@store/page.store';
+import BottomBarButtom from '@components/@shared/BottomBarButton/BottomBarButton';
+import Button from '@components/@shared/Button/Button';
+import { meInRoomState, userInfoSelector } from '@store/user.store';
+import useSocket from '@hooks/useSocket';
+import { SOCKET_EVENT_TYPE } from '@constants/socket.constant';
 
 interface Props {
 	mainController?: React.ReactNode;
@@ -38,13 +40,19 @@ interface Props {
 enum DRAWER_TYPE {
 	CHAT_DRAWER = 'Chat',
 	USER_DRAWER = 'User',
-	RECORD_DRAWER = 'Record',
 }
 
 const BottomBar = ({ mainController }: Props) => {
-	const { safeNavigate } = useSafeNavigate();
-	const [isMicOn, setIsMicOn] = useState(true);
-	const [isCameraOn, setIsCameraOn] = useState(true);
+	const { openModal } = useModal();
+	const { socketEmit } = useSocket();
+	const page = useRecoilValue(pageState);
+	const [me, setMe] = useRecoilState(meInRoomState);
+	const userInfo = useRecoilValue(userInfoSelector);
+
+	const myStream = userInfo.find((user) => user.uuid === me.uuid);
+
+	const [isMicOn, setIsMicOn] = useState(me.audio);
+	const [isCameraOn, setIsCameraOn] = useState(me.video);
 
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [drawerCategory, setDrawerCategory] = useState<DRAWER_TYPE>(null);
@@ -65,75 +73,104 @@ const BottomBar = ({ mainController }: Props) => {
 		setDrawerCategory(null);
 	};
 
+	const handleLeaveRoom = () => {
+		const exitRoomProp =
+			page === PAGE_TYPE.LOBBY_PAGE
+				? null
+				: {
+						content:
+							page === PAGE_TYPE.WAITTING_PAGE
+								? '작성된 피드백은 기록 메뉴에서 확인할 수 있습니다.'
+								: '현재까지 진행 상황이 저장되지 않습니다.',
+				  };
+
+		openModal('ExitRoomModal', exitRoomProp);
+	};
+
 	const drawerContentsSwitch = () => {
 		switch (drawerCategory) {
 			case DRAWER_TYPE.CHAT_DRAWER:
 				return <ChatDrawer />;
 			case DRAWER_TYPE.USER_DRAWER:
 				return <UserDrawer />;
-			case DRAWER_TYPE.RECORD_DRAWER:
-				return <RecordDrawer />;
 		}
 	};
 
-	const handleLeaveRoom = () => {
-		socketEmit(SOCKET_EVENT_TYPE.LEAVE_ROOM);
-		safeNavigate(PAGE_TYPE.LANDING_PAGE);
+	const handleMic = () => {
+		myStream.stream.getAudioTracks().forEach((track) => {
+			track.enabled = !isMicOn;
+			console.log('오디오', track.enabled);
+		});
+
+		socketEmit(SOCKET_EVENT_TYPE.UPDATE_MEDIA_INFO, { audio: !isMicOn });
+		setMe({ ...me, audio: !isMicOn });
+		setIsMicOn((current) => !current);
+	};
+
+	const handleCamera = () => {
+		myStream.stream.getVideoTracks().forEach((track) => {
+			track.enabled = !isCameraOn;
+			console.log('비디오', track.enabled);
+		});
+
+		socketEmit(SOCKET_EVENT_TYPE.UPDATE_MEDIA_INFO, { video: !isCameraOn });
+		setMe({ ...me, video: !isCameraOn });
+		setIsCameraOn((current) => !current);
 	};
 
 	return (
 		<>
 			<div css={bottomBarStyle}>
 				<div css={iconGroupStyle}>
-					<button>
-						<UserIcon {...iconBgStyle} />
-					</button>
-
+					<BottomBarButtom>
+						<UserIcon />
+					</BottomBarButtom>
 					<div css={horzLineStyle} />
-					{isMicOn ? (
-						<button onClick={() => setIsMicOn(false)}>
-							<MicOnIcon {...iconBgStyle} />
-						</button>
-					) : (
-						<button onClick={() => setIsMicOn(true)}>
-							<MicOffIcon {...iconBgStyle} fill={theme.colors.red} />
-						</button>
-					)}
-					{isCameraOn ? (
-						<button onClick={() => setIsCameraOn(false)}>
-							<CameraOnIcon {...iconBgStyle} />
-						</button>
-					) : (
-						<button onClick={() => setIsCameraOn(true)}>
-							<CameraOffIcon {...iconBgStyle} fill={theme.colors.red} />
-						</button>
-					)}
+					<BottomBarButtom color={isMicOn ? 'secondary' : 'red'} onClick={handleMic}>
+						{isMicOn ? <MicOnIcon /> : <MicOffIcon />}
+					</BottomBarButtom>
+					<BottomBarButtom
+						color={isCameraOn ? 'secondary' : 'red'}
+						onClick={handleCamera}
+					>
+						{isCameraOn ? <CameraOnIcon /> : <CameraOffIcon />}
+					</BottomBarButtom>
+					<BottomBarButtom visibility={'hidden'} disabled={true}>
+						<UserIcon />
+					</BottomBarButtom>
 				</div>
 				{mainController}
 				<div css={iconGroupStyle}>
-					<button onClick={() => handleToggleDrawer(DRAWER_TYPE.CHAT_DRAWER)}>
-						<ChatIcon {...iconBgStyle} />
-					</button>
-					<button onClick={() => handleToggleDrawer(DRAWER_TYPE.USER_DRAWER)}>
-						<UsersIcon {...iconBgStyle} />
-					</button>
-					<button onClick={() => handleToggleDrawer(DRAWER_TYPE.RECORD_DRAWER)}>
-						<FolderIcon {...iconBgStyle} />
-					</button>
+					<BottomBarButtom onClick={() => handleToggleDrawer(DRAWER_TYPE.CHAT_DRAWER)}>
+						<ChatIcon />
+					</BottomBarButtom>
+					<BottomBarButtom onClick={() => handleToggleDrawer(DRAWER_TYPE.USER_DRAWER)}>
+						<UsersIcon />
+					</BottomBarButtom>
+					<BottomBarButtom
+						onClick={() => openModal('InterviewDocsModal', { roomUUID: me.roomUUID })}
+					>
+						<FolderIcon />
+					</BottomBarButtom>
 					<div css={horzLineStyle} />
-					<button onClick={handleLeaveRoom}>
-						<EnterIcon {...iconBgStyle} fill={theme.colors.red} />
-					</button>
+					<BottomBarButtom color="red" onClick={handleLeaveRoom}>
+						<EnterIcon />
+					</BottomBarButtom>
 				</div>
 			</div>
 			<aside css={drawerStyle(isDrawerOpen)}>
 				<div css={drawerHeaderStyle}>
 					<div>{drawerCategory}</div>
-					<button onClick={handleCloseDrawer}>
-						<CloseIcon {...iconBgStyle} width={25} height={25} />
-					</button>
+					<Button
+						style="text"
+						color="secondary"
+						size="medium"
+						onClick={handleCloseDrawer}
+					>
+						<CloseIcon />
+					</Button>
 				</div>
-				<div>{drawerContentsSwitch()}</div>
+				{drawerContentsSwitch()}
 			</aside>
 		</>
 	);

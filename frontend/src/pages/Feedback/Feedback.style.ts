@@ -1,36 +1,34 @@
 import { css } from '@emotion/react';
+import { flexColumn, flexRow } from '@styles/globalStyle';
 
 export const feedbackWrapperStyle = (theme) => css`
 	width: 100%;
-	height: 100%;
-	box-sizing: border-box;
+	height: calc(100% - ${theme.bottomBarHeight});
 	background-color: ${theme.colors.tertiary};
 `;
 
-export const feedbackPageContainerStyle = css`
+export const feedbackContainerStyle = (theme) => css`
+	${flexRow({ gap: '24px' })};
+
+	width: 80%;
 	height: 100%;
-	display: flex;
-	gap: 25px;
-	justify-content: center;
-	align-items: center;
 	max-width: 1200px;
 	margin: auto;
-`;
 
-export const feedbackSyncBtnStyle = (theme, isFbSync) => css`
-	background-color: ${isFbSync ? theme.colors.primary : theme.colors.white};
-	width: 50;
-	height: 50;
-	border-radius: '25px';
-	display: 'flex';
-	justify-content: 'center';
-	align-items: 'center';
+	color: ${theme.colors.white};
 `;
 
 export const feedbackAreaStyle = css`
-	display: flex;
-	flex-direction: column;
+	${flexColumn({ gap: '24px' })};
+
 	width: 50%;
 	height: 80%;
-	gap: 25px;
+`;
+
+export const syncButtonAreaStyle = (theme) => css`
+	${flexRow({ gap: '16px' })};
+`;
+
+export const syncDotLineStyle = () => css`
+	width: 16px;
 `;

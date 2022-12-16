@@ -1,12 +1,12 @@
 import React from 'react';
 
-import useCrudFeedback from '@hooks/useCrudFeedback';
+import useEditFeedback from '@hooks/useEditFeedback';
 
 import { ReactComponent as DeleteIcon } from '@assets/icon/delete.svg';
 import { ReactComponent as EditIcon } from '@assets/icon/edit.svg';
 import { ReactComponent as CheckIcon } from '@assets/icon/check.svg';
-import { iconSmStyle } from '@styles/commonStyle';
 import { fbBtnContainer } from './FeedbackEditBtns.style';
+import Button from '@components/@shared/Button/Button';
 
 interface Props {
 	id: string;
@@ -15,22 +15,22 @@ interface Props {
 
 const FeedbackEditBtn = ({ id, readOnly }: Props) => {
 	const { handleStartEditFeedback, handleEndEditFeedback, handleDeleteFeedback } =
-		useCrudFeedback(id);
+		useEditFeedback(id);
 
 	return (
 		<div css={fbBtnContainer}>
 			{readOnly ? (
-				<button onClick={handleStartEditFeedback}>
-					<EditIcon {...iconSmStyle} fill="black" />
-				</button>
+				<Button color="secondary" size="xSmall" onClick={handleStartEditFeedback}>
+					<EditIcon />
+				</Button>
 			) : (
-				<button onClick={handleEndEditFeedback}>
-					<CheckIcon {...iconSmStyle} fill="black" />
-				</button>
+				<Button size="xSmall" onClick={handleEndEditFeedback}>
+					<CheckIcon />
+				</Button>
 			)}
-			<button onClick={handleDeleteFeedback}>
-				<DeleteIcon {...iconSmStyle} fill="black" />
-			</button>
+			<Button color="red" size="xSmall" onClick={handleDeleteFeedback}>
+				<DeleteIcon />
+			</Button>
 		</div>
 	);
 };

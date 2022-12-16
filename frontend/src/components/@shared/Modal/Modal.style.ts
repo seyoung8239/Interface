@@ -9,11 +9,11 @@ export const ModalWrapperStyle = (theme) => css`
 	padding: 40px 32px 32px 32px;
 
 	border: 1px solid ${theme.colors.gray2};
-	border-radius: ${theme.borderRaduis};
+	border-radius: ${theme.borderRadius};
 `;
 
-export const ModalTitleStyle = (theme) => css`
-	color: ${theme.colors.black};
+export const ModalTitleStyle = (theme, color) => css`
+	color: ${theme.colors[color]};
 
 	font-size: ${theme.fontSize.large};
 	font-weight: bold;
@@ -25,8 +25,10 @@ export const ModalButtonAreaStyle = (isArray) => css`
 	width: 100%;
 `;
 
-export const ModalContentAreaStyle = () => css`
-	${flexColumn({ gap: '32px' })}
+export const ModalContentAreaStyle = (gap = '16px', flexDirection) => css`
+	${flexDirection === 'row'
+		? flexRow({ gap, justifyContent: 'center' })
+		: flexColumn({ gap, justifyContent: 'center' })}
 
 	width: 100%;
 `;

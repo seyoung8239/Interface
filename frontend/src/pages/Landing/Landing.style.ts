@@ -20,6 +20,7 @@ export const headerStyle = () => css`
 	${flexRow({ justifyContent: 'space-between' })};
 
 	width: 100%;
+	height: 72px;
 
 	padding: 16px 24px;
 `;
@@ -31,12 +32,11 @@ export const mainStyle = (theme) => css`
 
 	padding: 24px;
 
-	//TODO 화면 줄어들 경우 밑에 안 채워지는 문제 수정
 	background: linear-gradient(
 		to bottom,
 		${theme.colors.white} 0%,
-		${theme.colors.white} 65%,
-		${theme.colors.tertiary} 65%,
+		${theme.colors.white} 60%,
+		${theme.colors.tertiary} 60%,
 		${theme.colors.tertiary} 100%
 	);
 `;
@@ -53,6 +53,6 @@ export const logoutBtn = (theme) => css`
 
 export const introTextStyle = (theme) => css`
 	color: ${theme.colors.black};
-	font-size: 48px;
+	font-size: 32px;
 	font-weight: bold;
 `;

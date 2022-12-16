@@ -7,6 +7,7 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { QueryFailedError } from 'typeorm';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -17,20 +18,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		const res = ctx.getResponse<Response>();
 		const req = ctx.getRequest<Request>();
 
-		if (!(exception instanceof HttpException)) {
+		if (!(exception instanceof HttpException || exception instanceof QueryFailedError)) {
+			console.error(exception);
 			exception = new InternalServerErrorException();
 		}
 
-		const { statusCode, message }: any = (exception as HttpException).getResponse();
+		const { statusCode, message, name }: any = (exception as HttpException)?.getResponse();
+		const { stack } = exception;
 
 		logger.error(`[Request URL] ${req.url}`);
 		logger.error(`[Exception Time] ${new Date().toISOString()}`);
-		logger.error(`[Exception Message] ${message}`);
-		logger.error(`[Exception Stack] ${exception.stack}`);
+		logger.error(`[Exception Name] ${name}`);
+		logger.error(`[Exception Message] ${statusCode} - ${message}`);
+		logger.error(`[Exception Stack] ${stack}`);
+		if (exception instanceof QueryFailedError) {
+			Logger.error(`[SQL MESSAGE] ${exception.message}`);
+		}
 
 		const response = {
-			message: message,
-			stack: exception.stack,
+			name,
+			message: `${statusCode} - ${message}`,
+			stack: stack,
 		};
 
 		res.status(statusCode).json(response);

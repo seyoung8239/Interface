@@ -1,18 +1,25 @@
 import React, { useEffect, useRef } from 'react';
 import FeedbackItem from '@components/FeedbackItem/FeedbackItem';
 import { useRecoilValue } from 'recoil';
-import { feedbackListSelector, isFbSyncState } from '@store/feedback.store';
+import { isFbSyncState } from '@store/feedback.store';
 import { focusIndexSelector } from '@store/currentVideoTime.store';
 
-import { feedbackListStyle } from './FeedbackList.style';
+import {
+	emptyFeedbackStyle,
+	fbTimelineStyle,
+	feedbackListStyle,
+	timelineStyle,
+} from './FeedbackList.style';
 import FeedbackEditBtn from '@components/FeedbackEditBtns/FeedbackEditBtns';
+import { FeedbackItemType } from '@customType/feedback';
 
 interface Props {
-	editable: boolean;
+	editable?: boolean;
+	feedbackList: FeedbackItemType[];
 }
-const FeedbackList = ({ editable }: Props) => {
+const FeedbackList = ({ editable = false, feedbackList }: Props) => {
 	const feedbackRef = useRef([]);
-	const feedbackList = useRecoilValue(feedbackListSelector);
+
 	const focusIndex = useRecoilValue(focusIndexSelector);
 	const isFbSync = useRecoilValue(isFbSyncState);
 
@@ -27,16 +34,28 @@ const FeedbackList = ({ editable }: Props) => {
 	const editableBtns = (props) => editable && <FeedbackEditBtn {...props} />;
 
 	return (
-		<div css={feedbackListStyle}>
-			{feedbackList.map((feedback, idx) => (
-				<FeedbackItem
-					key={feedback.id}
-					feedback={feedback}
-					feedbackRef={feedbackRef}
-					index={idx}
-					editableBtns={editableBtns({ id: feedback.id, readOnly: feedback.readOnly })}
-				/>
-			))}
+		<div css={fbTimelineStyle}>
+			{feedbackList.length > 0 ? (
+				<>
+					<div css={feedbackListStyle}>
+						{feedbackList.map((feedback, idx) => (
+							<FeedbackItem
+								key={feedback.id}
+								feedback={feedback}
+								feedbackRef={feedbackRef}
+								index={idx}
+								editableBtns={editableBtns({
+									id: feedback.id,
+									readOnly: feedback.readOnly,
+								})}
+							/>
+						))}
+					</div>
+					<div css={timelineStyle}></div>
+				</>
+			) : (
+				<div css={emptyFeedbackStyle}>작성된 피드백이 없습니다</div>
+			)}
 		</div>
 	);
 };
